@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Start Page</title>
+    <style>
+        :root {
+            --accent-color: #fa194b; 
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+            --glass-bg: rgba(15, 15, 19, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-blur: blur(16px);
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0; height: 100vh; color: var(--text-main);
+            background-color: #0f0f13; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* --- Backgrounds --- */
+        #bg-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
+            transition: background 0.5s ease;
+            transform: scale(1.05); 
+            will-change: transform;
+        }
+        .theme-gx { background: radial-gradient(circle at 50% 0%, #3a0a14 0%, #0f1015 70%); }
+        .theme-google { background: #202124; }
+        .theme-cyber { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); }
+        .theme-midnight { background: radial-gradient(circle at center, #1a2a6c, #112 80%); }
+
+        #bg-image, #bg-video { width: 100%; height: 100%; object-fit: cover; display: none; position: absolute; top:0; left:0; }
+        .bg-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%); pointer-events: none;
+        }
+
+        /* --- Animations --- */
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes warpSpeed {
+            0% { transform: scale(1) translateY(0); opacity: 1; }
+            40% { transform: scale(0.95) translateY(5px); opacity: 1; filter: blur(0px); }
+            100% { transform: scale(1.3) translateY(-30px); opacity: 0; filter: blur(4px); }
+        }
+        .warp-active { animation: warpSpeed 0.5s var(--ease-out-expo) forwards; pointer-events: none; }
+
+        /* --- Top Bar & Controls --- */
+        .top-bar {
+            padding: 8px 20px; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(15, 15, 19, 0.4); backdrop-filter: var(--glass-blur); border-bottom: 1px solid var(--glass-border);
+            opacity: 0; animation: slideUpFade 0.6s var(--ease-out-expo) forwards; z-index: 100;
+        }
+
+        .top-controls { display: flex; gap: 10px; align-items: center; position: relative; }
+
+        .icon-btn {
+            background: transparent; border: none; color: var(--text-main); cursor: pointer; padding: 6px; border-radius: 50%;
+            transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; position: relative;
+        }
+        .icon-btn:hover { background: rgba(255,255,255,0.1); color: var(--accent-color); transform: scale(1.1); }
+        
+        .profile-badge {
+            position: absolute; bottom: 0; right: 0; background: var(--accent-color); width: 10px; height: 10px;
+            border-radius: 50%; border: 2px solid #0f0f13;
+        }
+
+        /* Dropdowns */
+        .dropdown-menu {
+            display: block; position: absolute; top: 45px; background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5); z-index: 200;
+            opacity: 0; pointer-events: none; transform: translateY(-10px) scale(0.95);
+            transition: all 0.3s var(--ease-out-expo);
+        }
+        .dropdown-menu.show { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+        .menu-left { left: 0; transform-origin: top left; }
+        .menu-right { right: 0; transform-origin: top right; }
+
+        .profiles-list { display: flex; flex-direction: column; padding: 10px; width: 220px; }
+        .profile-item {
+            display: flex; align-items: center; justify-content: space-between; padding: 10px 15px;
+            color: var(--text-main); text-decoration: none; font-size: 13px; border-radius: 8px; cursor: pointer; transition: 0.2s;
+        }
+        .profile-item:hover { background: rgba(255,255,255,0.1); }
+        .profile-item.active { background: color-mix(in srgb, var(--accent-color) 20%, transparent); color: var(--accent-color); font-weight: bold; }
+        .add-profile-btn { color: var(--accent-color); font-weight: bold; justify-content: center; margin-top: 5px; border-top: 1px solid var(--glass-border); border-radius: 0 0 8px 8px; }
+
+        .apps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 15px; width: 280px; }
+        .app-item {
+            display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text-main);
+            text-decoration: none; font-size: 11px; padding: 10px 5px; border-radius: 8px; transition: background 0.2s;
+        }
+        .app-item:hover { background: rgba(255,255,255,0.1); color: var(--accent-color); }
+        .app-icon { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
+
+        /* Settings Menu */
+        .settings-list { display: flex; flex-direction: column; width: 290px; max-height: 80vh; overflow-y: auto; }
+        .settings-list::-webkit-scrollbar { width: 6px; }
+        .settings-list::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
+        .settings-category { padding: 15px 20px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; color: var(--text-muted); border-top: 1px solid var(--glass-border); }
+        .settings-list .settings-category:first-child { border-top: none; padding-top: 15px; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; font-size: 13px; gap: 10px; }
+        
+        .setting-row select, .setting-row input[type="text"], .setting-row input[type="password"] {
+            appearance: none; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: var(--text-main);
+            padding: 6px 10px; border-radius: 6px; font-size: 12px; outline: none; transition: 0.2s; width: 120px;
+        }
+        .setting-row select { cursor: pointer; width: auto; padding-right: 25px; }
+        .setting-row select:focus, .setting-row input:focus { border-color: var(--accent-color); }
+        .toggle-switch { accent-color: var(--accent-color); cursor: pointer; width: 36px; height: 18px; }
+
+        /* Range Slider */
+        input[type="range"] { -webkit-appearance: none; width: 100px; background: transparent; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent-color); cursor: pointer; margin-top: -6px; }
+        input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: var(--glass-border); border-radius: 2px; }
+
+        input[type="color"] { -webkit-appearance: none; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; padding: 0; background: transparent; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 2px solid var(--glass-border); border-radius: 50%; transition: 0.2s; }
+        input[type="color"]:hover::-webkit-color-swatch { border-color: var(--text-main); }
+
+        .btn-upload {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-main);
+            padding: 8px; border-radius: 6px; cursor: pointer; text-align: center; transition: 0.2s; font-size: 13px; margin: 0 20px 15px; display: block;
+        }
+        .btn-upload:hover { background: rgba(255,255,255,0.1); border-color: var(--text-muted); }
+
+        /* --- Main Content --- */
+        .main-content {
+            flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding-bottom: 12vh;
+        }
+
+        .greeting { font-size: 48px; margin-bottom: 30px; font-weight: 300; letter-spacing: 1px; text-shadow: 0 2px 10px rgba(0,0,0,0.5); opacity: 0; animation: slideUpFade 0.6s var(--ease-out-expo) forwards; }
+
+        .search-container { position: relative; width: 100%; max-width: 650px; opacity: 0; animation: slideUpFade 0.6s var(--ease-out-expo) 0.1s forwards; z-index: 50; }
+        .search-row {
+            display: flex; flex-direction: row; align-items: center; width: 100%;
+            background: var(--glass-bg); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border);
+            border-radius: 30px; padding: 4px 10px 4px 24px; box-shadow: 0 8px 25px rgba(0,0,0,0.4); transition: all 0.3s;
+        }
+        .search-row.has-suggestions { border-radius: 24px 24px 0 0; border-bottom-color: transparent; }
+        .search-row:focus-within { border-color: var(--accent-color); box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 15px color-mix(in srgb, var(--accent-color) 35%, transparent); }
+
+        input[type="text"] { flex-grow: 1; padding: 14px 0; background: transparent; border: none; color: var(--text-main); font-size: 18px; outline: none; width: 100%; }
+
+        button.search-btn {
+            background: transparent; border: none; color: var(--text-muted); width: 44px; height: 44px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s var(--ease-out-expo);
+        }
+        .search-row:focus-within button.search-btn { color: var(--accent-color); }
+        button.search-btn:hover { background: rgba(255,255,255,0.1); transform: rotate(15deg) scale(1.1); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent-color) 60%, transparent)); }
+
+        .suggestions-box {
+            position: absolute; top: 100%; left: 0; right: 0; width: 100%;
+            background: var(--glass-bg); backdrop-filter: var(--glass-blur); border: 1px solid var(--accent-color);
+            border-top: none; border-radius: 0 0 24px 24px; overflow: hidden; display: none; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+        }
+        .suggestion-item { padding: 14px 24px; cursor: pointer; color: var(--text-muted); font-size: 15px; display: flex; align-items: center; gap: 15px; transition: 0.2s; }
+        .suggestion-item:hover { background: rgba(255,255,255,0.08); color: var(--text-main); padding-left: 30px; }
+        .suggestion-item svg { width: 16px; height: 16px; fill: currentColor; opacity: 0.6; }
+
+        .shortcuts-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-top: 40px; max-width: 700px; }
+        .shortcut-box {
+            position: relative; display: flex; flex-direction: column; align-items: center; width: 80px; padding: 15px 10px;
+            border-radius: 12px; background: rgba(15, 15, 19, 0.4); backdrop-filter: var(--glass-blur); border: 1px solid transparent; text-decoration: none; color: var(--text-main); cursor: pointer;
+            opacity: 0; animation: slideUpFade 0.6s var(--ease-out-expo) forwards; transition: all 0.2s ease;
+        }
+        .shortcut-box:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--glass-border); transform: translateY(-5px); }
+        .shortcut-icon-wrapper { width: 48px; height: 48px; background-color: rgba(255,255,255,0.05); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; border: 1px solid var(--glass-border); }
+        .shortcut-icon-wrapper img { width: 24px; height: 24px; }
+        .shortcut-box span { font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center;}
+        .delete-btn { position: absolute; top: -5px; right: -5px; background: var(--accent-color); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; display: none; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .shortcut-box:hover .delete-btn { display: flex; }
+
+        .bottom-island-wrapper {
+            position: absolute; bottom: 35px; left: 0; width: 100%;
+            display: flex; justify-content: center; pointer-events: none; 
+            z-index: 10;
+        }
+        .bottom-island {
+            background: var(--glass-bg); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border);
+            border-radius: 40px; padding: 14px 35px; display: flex; gap: 30px; align-items: center;
+            font-size: 15px; color: var(--text-main); box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            pointer-events: auto; 
+            opacity: 0; animation: slideUpFade 0.6s var(--ease-out-expo) 0.3s forwards;
+            display: none; 
+        }
+        .island-item { display: flex; align-items: center; gap: 10px; }
+        .island-item span { color: var(--text-muted); }
+        .island-item strong { color: var(--text-main); font-weight: 600; letter-spacing: 0.5px; }
+        .island-divider { width: 1px; height: 20px; background: var(--glass-border); }
+        .island-icon { width: 18px; height: 18px; fill: var(--accent-color); }
+
+        /* Modals */
+        .modal-overlay { display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); align-items: center; justify-content: center; z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .modal { background: var(--glass-bg); backdrop-filter: var(--glass-blur); padding: 25px; border-radius: 16px; border: 1px solid var(--glass-border); width: 300px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); display: flex; flex-direction: column; gap: 15px; transform: translateY(20px) scale(0.95); transition: all 0.3s var(--ease-out-expo); }
+        .modal-overlay.show .modal { transform: translateY(0) scale(1); }
+        .modal h3 { margin: 0; font-size: 18px; font-weight: 500; }
+        .modal input { padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); outline: none; transition: 0.2s; }
+        .modal input:focus { border-color: var(--accent-color); }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+        .modal-buttons button { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-cancel { background: transparent; color: var(--text-muted); }
+        .btn-cancel:hover { color: var(--text-main); }
+        .btn-save { background: var(--accent-color); color: white; }
+
+        /* Stats Dropdown Specifics */
+        .stats-content { padding: 15px; width: 320px; display: flex; flex-direction: column; gap: 15px; }
+        .stats-section-title { font-size: 12px; text-transform: uppercase; color: var(--text-muted); font-weight: bold; margin-bottom: 10px; letter-spacing: 1px;}
+        .stat-bar-container { width: 100%; background: rgba(0,0,0,0.3); border-radius: 8px; height: 10px; overflow: hidden; margin-bottom: 5px; }
+        .stat-bar { height: 100%; background: var(--accent-color); width: 0%; transition: width 1s ease; }
+        .stat-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 12px; }
+        .top-search-item { display: flex; justify-content: space-between; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 8px; font-size: 13px;}
+        .top-search-item span:last-child { color: var(--accent-color); font-weight: bold; }
+
+        /* AI Side Panel Specifics */
+        .side-panel-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 250; }
+        .side-panel-overlay.show { opacity: 1; pointer-events: auto; }
+        .side-panel {
+            position: fixed; top: 0; right: 0; width: 380px; height: 100%; background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur); border-left: 1px solid var(--glass-border);
+            transform: translateX(100%); transition: transform 0.4s var(--ease-out-expo); z-index: 260;
+            display: flex; flex-direction: column; box-shadow: -10px 0 40px rgba(0,0,0,0.5);
+        }
+        .side-panel.show { transform: translateX(0); }
+        .panel-header { padding: 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; }
+        .panel-header h2 { margin: 0; font-size: 18px; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+        .panel-header h2 svg { fill: var(--accent-color); }
+        .close-panel-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 24px; display: flex; transition: 0.2s; }
+        .close-panel-btn:hover { color: var(--accent-color); transform: scale(1.1); }
+        .panel-content { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+        
+        .chat-history { flex-grow: 1; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        .chat-history::-webkit-scrollbar { width: 6px; }
+        .chat-history::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
+        .chat-bubble { padding: 12px 16px; border-radius: 12px; max-width: 85%; font-size: 14px; line-height: 1.4; }
+        .chat-user { background: color-mix(in srgb, var(--accent-color) 40%, transparent); align-self: flex-end; border-bottom-right-radius: 2px; }
+        .chat-bot { background: rgba(255,255,255,0.1); align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid var(--glass-border); }
+        .chat-input-area { display: flex; gap: 10px; margin-top: auto; padding-top: 15px; border-top: 1px solid var(--glass-border);}
+        .chat-input-area input { flex-grow: 1; padding: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; color: white; outline: none; }
+        .chat-input-area input:focus { border-color: var(--accent-color); }
+        .chat-input-area button { background: var(--accent-color); border: none; color: white; border-radius: 8px; padding: 0 15px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .chat-input-area button:hover { opacity: 0.8; transform: scale(1.05); }
+
+        /* AFK Overlay */
+        .afk-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500;
+            backdrop-filter: blur(20px); background: rgba(15, 15, 19, 0.4);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.8s ease;
+        }
+        .afk-overlay.show { opacity: 1; pointer-events: auto; }
+        .afk-text { font-size: 42px; font-weight: 300; margin-bottom: 10px; color: var(--text-main); text-shadow: 0 4px 15px rgba(0,0,0,0.8); }
+        .afk-subtext { font-size: 16px; color: var(--text-muted); background: rgba(0,0,0,0.4); padding: 8px 16px; border-radius: 20px; }
+
+    </style>
+</head>
+<body>
+
+    <div id="bg-container" class="theme-gx">
+        <video id="bg-video" autoplay loop muted playsinline></video>
+        <img id="bg-image" alt="background">
+    </div>
+    <div class="bg-overlay"></div>
+
+    <div class="afk-overlay" id="afkOverlay">
+        <div class="afk-text" id="afkTimeDisplay">Welcome Back</div>
+        <div class="afk-subtext">Move your mouse or press any key to resume</div>
+    </div>
+
+    <div class="top-bar">
+        <div class="top-controls">
+            <div style="position: relative;">
+                <button class="icon-btn" id="profilesBtn" title="Profiles">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    <div class="profile-badge"></div>
+                </button>
+                <div id="profilesMenu" class="dropdown-menu menu-left">
+                    <div class="profiles-list" id="profilesListContainer"></div>
+                </div>
+            </div>
+
+            <div style="position: relative;">
+                <button class="icon-btn" id="settingsBtn" title="Settings">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+                </button>
+                <div id="settingsMenu" class="dropdown-menu menu-left">
+                    <div class="settings-list">
+                        
+                        <div class="settings-category">AFK Screen</div>
+                        <div class="setting-row">
+                            <span>Enable Blur</span>
+                            <input type="checkbox" id="toggleAfk" class="toggle-switch">
+                        </div>
+                        <div class="setting-row">
+                            <span>Timeout (<span id="afkTimeVal">60s</span>)</span>
+                            <input type="range" id="afkTimeSettings" min="10" max="300" step="10" value="60">
+                        </div>
+
+                        <div class="settings-category">Search</div>
+                        <div class="setting-row">
+                            <span>Engine</span>
+                            <select id="engineSelectSettings">
+                                <option value="google">Google</option>
+                                <option value="duckduckgo">DuckDuckGo</option>
+                                <option value="bing">Bing</option>
+                                <option value="youtube">YouTube</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <span>Suggestions</span>
+                            <input type="checkbox" id="toggleSuggestions" class="toggle-switch">
+                        </div>
+
+                        <div class="settings-category">Widgets (Bottom Island)</div>
+                        <div class="setting-row">
+                            <span>Show Island</span>
+                            <input type="checkbox" id="toggleIsland" class="toggle-switch">
+                        </div>
+                        <div class="setting-row" style="padding-top:0;">
+                            <span>Weather</span>
+                            <input type="checkbox" id="toggleWeather" class="toggle-switch">
+                        </div>
+                        <div class="setting-row" style="padding-top:0;">
+                            <span>Bitcoin (BTC)</span>
+                            <input type="checkbox" id="toggleBTC" class="toggle-switch">
+                        </div>
+                        <div class="setting-row" style="padding-top:0;">
+                            <span>Ethereum (ETH)</span>
+                            <input type="checkbox" id="toggleETH" class="toggle-switch">
+                        </div>
+
+                        <div class="settings-category">Appearance</div>
+                        <div class="setting-row">
+                            <span>Accent Color</span>
+                            <input type="color" id="accentPicker">
+                        </div>
+                        <div class="setting-row">
+                            <span>Wallpaper Preset</span>
+                            <select id="themeSelector">
+                                <option value="theme-gx">GX Classic</option>
+                                <option value="theme-google">Google Dark</option>
+                                <option value="theme-cyber">Neon Cyber</option>
+                                <option value="theme-midnight">Midnight Blue</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <span>Mouse Parallax</span>
+                            <input type="checkbox" id="toggleParallax" class="toggle-switch">
+                        </div>
+
+                        <div class="settings-category">Custom Wallpaper</div>
+                        <label class="btn-upload">
+                            Upload Image / Video
+                            <input type="file" id="bgUpload" accept="image/*,video/mp4,video/webm" hidden>
+                        </label>
+                        <div id="clearBgBtn" class="btn-upload" style="color:var(--accent-color); border-color:color-mix(in srgb, var(--accent-color) 30%, transparent); margin-top:-5px;">
+                            Clear Custom Upload
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="top-controls">
+            <div style="position: relative;">
+                <button class="icon-btn" id="openStatsBtn" title="Your Stats">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                </button>
+                <div id="statsMenu" class="dropdown-menu menu-right">
+                    <div class="stats-content">
+                        <div>
+                            <div class="stats-section-title">Activity Profile</div>
+                            <div class="stat-label"><span>Productive</span> <span id="statPctProd">0%</span></div>
+                            <div class="stat-bar-container"><div class="stat-bar" id="statBarProd"></div></div>
+                            
+                            <div class="stat-label"><span>Gaming</span> <span id="statPctGame">0%</span></div>
+                            <div class="stat-bar-container"><div class="stat-bar" id="statBarGame" style="background:#00d2ff;"></div></div>
+                            
+                            <div class="stat-label"><span>Social & Media</span> <span id="statPctSocial">0%</span></div>
+                            <div class="stat-bar-container"><div class="stat-bar" id="statBarSocial" style="background:#ff00ea;"></div></div>
+                            
+                            <div class="stat-label"><span>General Search</span> <span id="statPctGen">0%</span></div>
+                            <div class="stat-bar-container"><div class="stat-bar" id="statBarGen" style="background:var(--text-muted);"></div></div>
+                        </div>
+            
+                        <div style="margin-top: 5px;">
+                            <div class="stats-section-title">Most Searched</div>
+                            <div id="topSearchesList">
+                                <div style="color:var(--text-muted); font-size:13px;">No searches yet.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="icon-btn" id="openAIBtn" title="AI Assistant">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                    <path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/>
+                </svg>
+            </button>
+
+            <div style="position: relative;">
+                <button class="icon-btn" id="appsBtn" title="Google Apps">
+                    <svg focusable="false" viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM7 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM17 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"></path></svg>
+                </button>
+                <div id="appsMenu" class="dropdown-menu menu-right">
+                    <div class="apps-grid">
+                        <a href="https://myaccount.google.com" class="app-item"><img src="https://www.google.com/s2/favicons?domain=myaccount.google.com&sz=64" class="app-icon"><span>Account</span></a>
+                        <a href="https://gemini.google.com" class="app-item"><img src="https://www.google.com/s2/favicons?domain=gemini.google.com&sz=64" class="app-icon"><span>Gemini</span></a>
+                        <a href="https://mail.google.com" class="app-item"><img src="https://www.google.com/s2/favicons?domain=mail.google.com&sz=64" class="app-icon"><span>Gmail</span></a>
+                        <a href="https://drive.google.com" class="app-item"><img src="https://www.google.com/s2/favicons?domain=drive.google.com&sz=64" class="app-icon"><span>Drive</span></a>
+                        <a href="https://classroom.google.com" class="app-item"><img src="https://www.google.com/s2/favicons?domain=classroom.google.com&sz=64" class="app-icon"><span>Classroom</span></a>
+                        <a href="https://keep.google.com" class="app-item"><img src="https://www.google.com/s2/favicons?domain=keep.google.com&sz=64" class="app-icon"><span>Keep</span></a>
+                        <a href="https://docs.google.com" class="app-item"><img src="https://www.google.com/s2/favicons?domain=docs.google.com&sz=64" class="app-icon"><span>Docs</span></a>
+                        <a href="https://docs.google.com/spreadsheets" class="app-item"><img src="https://ssl.gstatic.com/docs/doclist/images/mediatype/icon_1_spreadsheet_x64.png" class="app-icon"><span>Sheets</span></a>
+                        <a href="https://docs.google.com/presentation" class="app-item"><img src="https://ssl.gstatic.com/docs/doclist/images/mediatype/icon_1_presentation_x64.png" class="app-icon"><span>Slides</span></a>
+                        <a href="https://calendar.google.com" class="app-item"><img src="https://www.google.com/s2/favicons?domain=calendar.google.com&sz=64" class="app-icon"><span>Calendar</span></a>
+                        <a href="https://meet.google.com" class="app-item"><img src="https://www.google.com/s2/favicons?domain=meet.google.com&sz=64" class="app-icon"><span>Meet</span></a>
+                        <a href="https://youtube.com" class="app-item"><img src="https://www.google.com/s2/favicons?domain=youtube.com&sz=64" class="app-icon"><span>YouTube</span></a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="side-panel-overlay" id="panelOverlay" onclick="closeSidePanels()"></div>
+    <div class="side-panel" id="aiPanel">
+        <div class="panel-header">
+            <h2>
+                <svg viewBox="0 0 24 24" width="20" height="20"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg>
+                AI Assistant
+            </h2>
+            <button class="close-panel-btn" onclick="closeSidePanels()">&times;</button>
+        </div>
+        <div class="panel-content" style="padding-bottom:15px;">
+            <div class="chat-history" id="chatHistory">
+                <div class="chat-bubble chat-bot">Hello! I'm your built-in AI. How can I help you today?</div>
+            </div>
+            <form class="chat-input-area" id="chatForm">
+                <input type="text" id="chatInput" placeholder="Ask anything..." required autocomplete="off">
+                <button type="submit">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="main-content" id="mainContainer">
+        <div id="greeting" class="greeting"></div>
+        
+        <div class="search-container">
+            <form id="searchForm" class="search-row">
+                <input type="text" id="searchInput" placeholder="Search the web..." required autocomplete="off" autofocus>
+                <button type="submit" class="search-btn" title="Search">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </form>
+            <div id="suggestionsBox" class="suggestions-box"></div>
+        </div>
+
+        <div class="shortcuts-grid" id="shortcutsGrid"></div>
+    </div>
+
+    <div class="bottom-island-wrapper">
+        <div class="bottom-island" id="bottomIsland">
+            <div class="island-item" id="weatherWidget" style="display:none;">
+                <svg class="island-icon" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4s1.79-4 4-4h.71C7.37 7.69 9.48 6 12 6c3.04 0 5.5 2.46 5.5 5.5v.5H19c1.66 0 3 1.34 3 3s-1.34 3-3 3z"/></svg>
+                <span id="weatherLocation">Loading...</span> <strong id="weatherTemp"></strong>
+            </div>
+            <div class="island-divider" id="div1" style="display:none;"></div>
+            <div class="island-item" id="btcWidget" style="display:none;">
+                <svg class="island-icon" viewBox="0 0 24 24"><path d="M14.6 10.9c.7-.4 1.2-1 1.2-1.9 0-1.6-1.3-2.6-3.7-2.6H8v11h4.5c2.6 0 4.1-1.1 4.1-2.9 0-1.3-.8-2.3-2-2.6zM10.4 8h1.4c1 0 1.6.3 1.6 1.1 0 .9-.6 1.2-1.6 1.2h-1.4V8zm1.6 7.6h-1.6v-2.5h1.6c1.1 0 1.9.4 1.9 1.3 0 .9-.8 1.2-1.9 1.2z"/></svg>
+                <span>BTC</span> <strong id="btcPrice">...</strong>
+            </div>
+            <div class="island-divider" id="div2" style="display:none;"></div>
+            <div class="island-item" id="ethWidget" style="display:none;">
+                <svg class="island-icon" viewBox="0 0 24 24"><path d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.22l7.365 4.339 7.365-4.34L12.056 0z"/></svg>
+                <span>ETH</span> <strong id="ethPrice">...</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="addModal">
+        <div class="modal">
+            <h3>Add Shortcut</h3>
+            <input type="text" id="shortcutName" placeholder="Name (e.g., Reddit)">
+            <input type="text" id="shortcutUrl" placeholder="URL (e.g., reddit.com)">
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal('addModal')">Cancel</button>
+                <button class="btn-save" onclick="saveShortcut()">Save</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal-overlay" id="profileModal">
+        <div class="modal">
+            <h3>New Profile</h3>
+            <input type="text" id="newProfileName" placeholder="Profile Name (e.g., Work)">
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal('profileModal')">Cancel</button>
+                <button class="btn-save" onclick="createProfile()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ---------------------------------------------------------
+        // ENTER YOUR OPEN ROUTER API KEY HERE
+        // ---------------------------------------------------------
+        const OPENROUTER_API_KEY = "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";
+
+
+        // --- PROFILES ENGINE ---
+        let profilesList = JSON.parse(localStorage.getItem('gxProfilesList')) || ['Default'];
+        let activeProfile = localStorage.getItem('gxActiveProfile');
+        if (!activeProfile || !profilesList.includes(activeProfile)) {
+            activeProfile = 'Default'; localStorage.setItem('gxActiveProfile', activeProfile);
+        }
+
+        function getSetting(key, def) {
+            let val = localStorage.getItem(activeProfile + '_' + key);
+            return val !== null ? JSON.parse(val) : def;
+        }
+        function setSetting(key, val) {
+            localStorage.setItem(activeProfile + '_' + key, JSON.stringify(val));
+        }
+
+        function renderProfilesMenu() {
+            const container = document.getElementById('profilesListContainer');
+            container.innerHTML = '';
+            profilesList.forEach(prof => {
+                const isAct = prof === activeProfile;
+                container.innerHTML += `<div class="profile-item ${isAct ? 'active' : ''}" onclick="switchProfile('${prof}')">
+                    <span>${prof}</span> ${isAct ? '✓' : ''}</div>`;
+            });
+            container.innerHTML += `<div class="profile-item add-profile-btn" onclick="openProfileModal()">+ New Profile</div>`;
+        }
+
+        function switchProfile(profName) {
+            if (profName === activeProfile) return;
+            localStorage.setItem('gxActiveProfile', profName);
+            window.location.reload(); 
+        }
+
+        function openProfileModal() {
+            document.getElementById('profileModal').classList.add('show');
+            document.getElementById('newProfileName').focus();
+            document.getElementById('profilesMenu').classList.remove('show');
+        }
+        function createProfile() {
+            const name = document.getElementById('newProfileName').value.trim();
+            if (name && !profilesList.includes(name)) {
+                profilesList.push(name);
+                localStorage.setItem('gxProfilesList', JSON.stringify(profilesList));
+                switchProfile(name); 
+            }
+        }
+        renderProfilesMenu();
+
+        // --- Dropdowns ---
+        function setupMenu(btnId, menuId) {
+            const btn = document.getElementById(btnId);
+            const menu = document.getElementById(menuId);
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.dropdown-menu').forEach(m => { if(m !== menu) m.classList.remove('show'); });
+                menu.classList.toggle('show');
+            });
+            menu.addEventListener('click', (e) => e.stopPropagation());
+        }
+        setupMenu('profilesBtn', 'profilesMenu');
+        setupMenu('appsBtn', 'appsMenu');
+        setupMenu('settingsBtn', 'settingsMenu');
+        setupMenu('openStatsBtn', 'statsMenu'); 
+        document.addEventListener('click', () => { document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show')); });
+
+        // --- Side Panels (AI only now) ---
+        function openSidePanel() {
+            document.getElementById('panelOverlay').classList.add('show');
+            document.getElementById('aiPanel').classList.add('show');
+            document.getElementById('chatInput').focus();
+        }
+        function closeSidePanels() {
+            document.getElementById('panelOverlay').classList.remove('show');
+            document.getElementById('aiPanel').classList.remove('show');
+        }
+        document.getElementById('openAIBtn').addEventListener('click', openSidePanel);
+
+
+        // --- Settings Initialization ---
+        const root = document.documentElement;
+        
+        function syncSettingInput(inputId, storageKey, defaultVal, callback = null, isCheckbox = false) {
+            const el = document.getElementById(inputId);
+            const val = getSetting(storageKey, defaultVal);
+            if(isCheckbox) el.checked = val; else el.value = val;
+            
+            el.addEventListener('change', (e) => {
+                const newVal = isCheckbox ? e.target.checked : e.target.value;
+                setSetting(storageKey, newVal);
+                if(callback) callback(newVal);
+            });
+            return val;
+        }
+
+        syncSettingInput('engineSelectSettings', 'engine', 'google');
+        syncSettingInput('toggleSuggestions', 'suggestions', true, null, true);
+        
+        const savedColor = getSetting('accent', '#fa194b');
+        root.style.setProperty('--accent-color', savedColor);
+        document.getElementById('accentPicker').value = savedColor;
+        document.getElementById('accentPicker').addEventListener('input', (e) => {
+            root.style.setProperty('--accent-color', e.target.value);
+            setSetting('accent', e.target.value);
+        });
+
+        const bgContainer = document.getElementById('bg-container');
+        syncSettingInput('themeSelector', 'theme', 'theme-gx', (val) => {
+            bgContainer.className = val;
+            document.getElementById('bg-video').style.display = 'none';
+            document.getElementById('bg-image').style.display = 'none';
+        });
+
+        let isParallaxActive = syncSettingInput('toggleParallax', 'parallax', false, (val) => {
+            isParallaxActive = val;
+            if (!isParallaxActive) bgContainer.style.transform = 'translate(0, 0) scale(1.05)';
+        }, true);
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isParallaxActive) return;
+            const x = (e.clientX / window.innerWidth - 0.5) * 30; 
+            const y = (e.clientY / window.innerHeight - 0.5) * 30;
+            bgContainer.style.transform = `translate(${-x}px, ${-y}px) scale(1.05)`;
+        });
+
+        // --- Dynamic Time-Based Greeting ---
+        function updateGreeting() {
+            const hour = new Date().getHours();
+            let timeText = "Good Evening";
+            if (hour >= 5 && hour < 12) timeText = "Good Morning";
+            else if (hour >= 12 && hour < 17) timeText = "Good Afternoon";
+            
+            const extraGreetings = ["Ready to explore?", "What's up!", "Let's find something."];
+            const extra = extraGreetings[Math.floor(Math.random() * extraGreetings.length)];
+            
+            document.getElementById('greeting').textContent = `${timeText}. ${extra}`;
+        }
+        updateGreeting();
+
+        // --- AFK Logic ---
+        let afkTimer;
+        let isAfkActive = false;
+        
+        function initAFK() {
+            const enabled = document.getElementById('toggleAfk').checked;
+            const secs = parseInt(document.getElementById('afkTimeSettings').value);
+            clearTimeout(afkTimer);
+            if(isAfkActive) {
+                document.getElementById('afkOverlay').classList.remove('show');
+                isAfkActive = false;
+            }
+            if(enabled) {
+                afkTimer = setTimeout(() => {
+                    document.getElementById('afkOverlay').classList.add('show');
+                    isAfkActive = true;
+                }, secs * 1000);
+            }
+        }
+        
+        syncSettingInput('toggleAfk', 'afkEnabled', false, initAFK, true);
+        
+        // Handle Slider visual text updates
+        const afkDisplay = document.getElementById('afkTimeVal');
+        syncSettingInput('afkTimeSettings', 'afkTime', "60", (val) => {
+            let num = parseInt(val);
+            afkDisplay.textContent = num >= 60 ? (num/60).toFixed(1) + 'm' : num + 's';
+            initAFK();
+        });
+        // Run once on load to set the correct text
+        let initialAfkVal = parseInt(document.getElementById('afkTimeSettings').value);
+        afkDisplay.textContent = initialAfkVal >= 60 ? (initialAfkVal/60).toFixed(1) + 'm' : initialAfkVal + 's';
+
+        ['mousemove', 'keydown', 'click', 'scroll'].forEach(evt => {
+            document.addEventListener(evt, initAFK);
+        });
+        initAFK(); 
+
+        // --- Dynamic Bottom Island ---
+        const bottomIsland = document.getElementById('bottomIsland');
+        const islandState = getSetting('islandConfig', { island: true, weather: true, btc: true, eth: true });
+        
+        function updateIslandUI() {
+            document.getElementById('toggleIsland').checked = islandState.island;
+            document.getElementById('toggleWeather').checked = islandState.weather;
+            document.getElementById('toggleBTC').checked = islandState.btc;
+            document.getElementById('toggleETH').checked = islandState.eth;
+
+            bottomIsland.style.display = islandState.island ? 'flex' : 'none';
+            document.getElementById('weatherWidget').style.display = islandState.weather ? 'flex' : 'none';
+            document.getElementById('btcWidget').style.display = islandState.btc ? 'flex' : 'none';
+            document.getElementById('ethWidget').style.display = islandState.eth ? 'flex' : 'none';
+            document.getElementById('div1').style.display = (islandState.weather && (islandState.btc || islandState.eth)) ? 'block' : 'none';
+            document.getElementById('div2').style.display = (islandState.btc && islandState.eth) ? 'block' : 'none';
+        }
+
+        ['toggleIsland', 'toggleWeather', 'toggleBTC', 'toggleETH'].forEach(id => {
+            document.getElementById(id).addEventListener('change', (e) => {
+                const key = id.replace('toggle', '').toLowerCase();
+                islandState[key] = e.target.checked;
+                setSetting('islandConfig', islandState);
+                updateIslandUI();
+            });
+        });
+        updateIslandUI();
+
+        async function fetchCrypto() {
+            if(!islandState.island) return;
+            try {
+                if(islandState.btc) { const res = await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot'); const json = await res.json(); document.getElementById('btcPrice').textContent = '$' + parseFloat(json.data.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+                if(islandState.eth) { const res = await fetch('https://api.coinbase.com/v2/prices/ETH-USD/spot'); const json = await res.json(); document.getElementById('ethPrice').textContent = '$' + parseFloat(json.data.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+            } catch(e) {}
+        }
+        async function fetchWeather() {
+            if(!islandState.island || !islandState.weather) return;
+            try {
+                const geoRes = await fetch('https://ipapi.co/json/');
+                const geoData = await geoRes.json();
+                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${geoData.latitude}&longitude=${geoData.longitude}&current_weather=true`);
+                const weatherData = await weatherRes.json();
+                document.getElementById('weatherLocation').textContent = geoData.city;
+                document.getElementById('weatherTemp').textContent = `${weatherData.current_weather.temperature}°C`;
+            } catch(e) { document.getElementById('weatherLocation').textContent = "Weather Offline"; }
+        }
+        fetchCrypto(); fetchWeather();
+        setInterval(fetchCrypto, 30000); setInterval(fetchWeather, 1800000);
+
+        // --- Live Search Suggestions ---
+        const searchInput = document.getElementById('searchInput');
+        const searchRow = document.querySelector('.search-row');
+        const suggestionsBox = document.getElementById('suggestionsBox');
+        let suggestionScript = null;
+
+        window.showSuggestions = function(data) {
+            suggestionsBox.innerHTML = '';
+            const suggestions = data[1]; 
+            if (suggestions && suggestions.length > 0 && document.getElementById('toggleSuggestions').checked && searchInput.value.trim().length > 0) {
+                suggestions.slice(0, 5).forEach(item => {
+                    const text = item[0];
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    div.innerHTML = `<svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg> ${text}`;
+                    div.onmousedown = () => { searchInput.value = text; document.getElementById('searchForm').dispatchEvent(new Event('submit')); };
+                    suggestionsBox.appendChild(div);
+                });
+                suggestionsBox.style.display = 'block'; searchRow.classList.add('has-suggestions');
+            } else { closeSuggestions(); }
+        };
+
+        function closeSuggestions() { suggestionsBox.style.display = 'none'; searchRow.classList.remove('has-suggestions'); }
+
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.trim();
+            if (query.length === 0 || !document.getElementById('toggleSuggestions').checked) { closeSuggestions(); return; }
+            if (suggestionScript) document.body.removeChild(suggestionScript);
+            suggestionScript = document.createElement('script');
+            suggestionScript.src = `https://suggestqueries.google.com/complete/search?client=youtube&q=${encodeURIComponent(query)}&jsonp=showSuggestions`;
+            document.body.appendChild(suggestionScript);
+        });
+        searchInput.addEventListener('blur', closeSuggestions);
+
+        // --- Search Handling & Stats Tracker ---
+        document.getElementById('searchForm').addEventListener('submit', function(event) {
+            event.preventDefault(); 
+            const query = document.getElementById('searchInput').value.trim();
+            if(!query) return;
+
+            let searchHistory = getSetting('searchHistory', {});
+            searchHistory[query] = (searchHistory[query] || 0) + 1;
+            setSetting('searchHistory', searchHistory);
+            updateStatsUI();
+
+            const engine = document.getElementById('engineSelectSettings').value;
+            let searchUrl = '';
+            if (engine === 'google') searchUrl = 'https://www.google.com/search?q=' + encodeURIComponent(query);
+            else if (engine === 'duckduckgo') searchUrl = 'https://duckduckgo.com/?q=' + encodeURIComponent(query);
+            else if (engine === 'bing') searchUrl = 'https://www.bing.com/search?q=' + encodeURIComponent(query);
+            else if (engine === 'youtube') searchUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
+
+            document.getElementById('mainContainer').classList.add('warp-active');
+            setTimeout(() => window.location.href = searchUrl, 400); 
+        });
+
+        // Stats UI Logic (Dropdown)
+        function updateStatsUI() {
+            let history = getSetting('searchHistory', {});
+            let entries = Object.entries(history).sort((a,b) => b[1] - a[1]);
+            
+            let categories = { prod: 0, game: 0, social: 0, gen: 0 };
+            let totalSearches = 0;
+
+            const keywords = {
+                game: ['game', 'play', 'twitch', 'steam', 'roblox', 'minecraft', 'xbox', 'ps5', 'ign', 'nintendo'],
+                prod: ['doc', 'sheet', 'mail', 'code', 'github', 'math', 'calculator', 'learn', 'how to', 'translate', 'drive', 'work'],
+                social: ['reddit', 'instagram', 'twitter', 'facebook', 'tiktok', 'chat', 'youtube', 'netflix', 'movie', 'spotify']
+            };
+
+            entries.forEach(([term, count]) => {
+                totalSearches += count;
+                const t = term.toLowerCase();
+                if(keywords.game.some(k => t.includes(k))) categories.game += count;
+                else if(keywords.prod.some(k => t.includes(k))) categories.prod += count;
+                else if(keywords.social.some(k => t.includes(k))) categories.social += count;
+                else categories.gen += count;
+            });
+
+            if(totalSearches > 0) {
+                document.getElementById('statPctProd').textContent = Math.round((categories.prod/totalSearches)*100) + '%';
+                document.getElementById('statBarProd').style.width = (categories.prod/totalSearches)*100 + '%';
+                
+                document.getElementById('statPctGame').textContent = Math.round((categories.game/totalSearches)*100) + '%';
+                document.getElementById('statBarGame').style.width = (categories.game/totalSearches)*100 + '%';
+                
+                document.getElementById('statPctSocial').textContent = Math.round((categories.social/totalSearches)*100) + '%';
+                document.getElementById('statBarSocial').style.width = (categories.social/totalSearches)*100 + '%';
+                
+                document.getElementById('statPctGen').textContent = Math.round((categories.gen/totalSearches)*100) + '%';
+                document.getElementById('statBarGen').style.width = (categories.gen/totalSearches)*100 + '%';
+            }
+
+            const listEl = document.getElementById('topSearchesList');
+            listEl.innerHTML = '';
+            if(entries.length === 0) {
+                listEl.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">No searches yet. Start browsing!</div>';
+            } else {
+                entries.slice(0, 5).forEach(([term, count]) => {
+                    listEl.innerHTML += `<div class="top-search-item"><span>${term}</span> <span>${count}</span></div>`;
+                });
+            }
+        }
+        updateStatsUI(); 
+
+        // --- AI Chat (OpenRouter) ---
+        const chatForm = document.getElementById('chatForm');
+        const chatInput = document.getElementById('chatInput');
+        const chatHistory = document.getElementById('chatHistory');
+
+        function appendMessage(text, isUser) {
+            const div = document.createElement('div');
+            div.className = `chat-bubble ${isUser ? 'chat-user' : 'chat-bot'}`;
+            div.textContent = text;
+            chatHistory.appendChild(div);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            return div;
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if(!text) return;
+
+            if(!OPENROUTER_API_KEY || OPENROUTER_API_KEY === "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") {
+                appendMessage("Please add your OpenRouter API Key in the HTML code (line ~430) first!", false);
+                return;
+            }
+
+            appendMessage(text, true);
+            chatInput.value = '';
+            const loadingMsg = appendMessage("Thinking...", false);
+
+            try {
+                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        "model": "google/gemma-2-9b-it:free",
+                        "messages": [
+                            {"role": "system", "content": "You are a helpful and concise browser assistant."},
+                            {"role": "user", "content": text}
+                        ]
+                    })
+                });
+
+                const data = await response.json();
+                loadingMsg.textContent = data.choices[0].message.content;
+            } catch (error) {
+                loadingMsg.textContent = "Error: Could not connect to OpenRouter. Make sure your API key is valid.";
+            }
+        });
+
+        // --- Custom Shortcuts ---
+        let myShortcuts = getSetting('shortcuts', [{ name: "YouTube", url: "https://youtube.com" }, { name: "Reddit", url: "https://reddit.com" }]);
+        const grid = document.getElementById('shortcutsGrid');
+
+        function renderShortcuts() {
+            grid.innerHTML = ''; 
+            myShortcuts.forEach((shortcut, index) => {
+                let cleanUrl = shortcut.url.startsWith('http') ? shortcut.url : 'https://' + shortcut.url;
+                const iconUrl = `https://www.google.com/s2/favicons?domain=${cleanUrl}&sz=64`;
+                const box = document.createElement('a');
+                box.href = cleanUrl; box.className = 'shortcut-box'; box.style.animationDelay = `${(index * 0.05) + 0.2}s`;
+                box.innerHTML = `<button class="delete-btn" onclick="deleteShortcut(event, ${index})">✕</button>
+                    <div class="shortcut-icon-wrapper"><img src="${iconUrl}" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'24\\' height=\\'24\\'><circle cx=\\'12\\' cy=\\'12\\' r=\\'12\\' fill=\\'%23a1a1aa\\'/></svg>'"></div>
+                    <span>${shortcut.name}</span>`;
+                grid.appendChild(box);
+            });
+            const addBtn = document.createElement('div');
+            addBtn.className = 'shortcut-box'; addBtn.style.animationDelay = `${(myShortcuts.length * 0.05) + 0.2}s`;
+            addBtn.onclick = () => { document.getElementById('addModal').classList.add('show'); document.getElementById('shortcutName').focus(); };
+            addBtn.innerHTML = `<div class="shortcut-icon-wrapper" style="font-size:20px; font-weight:bold;">+</div><span>Add</span>`;
+            grid.appendChild(addBtn);
+        }
+
+        function closeModal(modalId) { 
+            document.getElementById(modalId).classList.remove('show'); 
+            if(modalId === 'addModal') { document.getElementById('shortcutName').value = ''; document.getElementById('shortcutUrl').value = ''; } 
+            else if (modalId === 'profileModal') { document.getElementById('newProfileName').value = ''; }
+        }
+
+        function saveShortcut() {
+            const name = document.getElementById('shortcutName').value;
+            const url = document.getElementById('shortcutUrl').value;
+            if (name && url) { myShortcuts.push({ name, url }); setSetting('shortcuts', myShortcuts); renderShortcuts(); closeModal('addModal'); }
+        }
+
+        function deleteShortcut(event, index) {
+            event.preventDefault(); myShortcuts.splice(index, 1); setSetting('shortcuts', myShortcuts); renderShortcuts();
+        }
+        renderShortcuts();
+
+        // --- IndexedDB Custom Background ---
+        const dbName = "GXThemeDB_Profiles"; const storeName = "wallpapers";
+        function openDB() { return new Promise((resolve) => { const req = indexedDB.open(dbName, 1); req.onupgradeneeded = (e) => { if (!e.target.result.objectStoreNames.contains(storeName)) e.target.result.createObjectStore(storeName); }; req.onsuccess = () => resolve(req.result); }); }
+        function applyBackground(fileObj, type) {
+            const videoEl = document.getElementById('bg-video'); const imgEl = document.getElementById('bg-image');
+            const url = URL.createObjectURL(fileObj);
+            if (type.startsWith('video/')) { imgEl.style.display = 'none'; videoEl.style.display = 'block'; videoEl.src = url; } else { videoEl.style.display = 'none'; videoEl.src = ''; imgEl.style.display = 'block'; imgEl.src = url; }
+        }
+        const bgKey = activeProfile + '_customBg';
+        openDB().then(db => {
+            const tx = db.transaction(storeName, 'readonly'); const req = tx.objectStore(storeName).get(bgKey);
+            req.onsuccess = () => { if (req.result && req.result.data) applyBackground(req.result.data, req.result.type); };
+        });
+        document.getElementById('bgUpload').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (file) { applyBackground(file, file.type); const db = await openDB(); db.transaction(storeName, 'readwrite').objectStore(storeName).put({ data: file, type: file.type }, bgKey); document.getElementById('settingsMenu').classList.remove('show'); }
+        });
+        document.getElementById('clearBgBtn').addEventListener('click', async function() {
+            document.getElementById('bg-video').style.display = 'none'; document.getElementById('bg-image').style.display = 'none';
+            const db = await openDB(); db.transaction(storeName, 'readwrite').objectStore(storeName).delete(bgKey); bgContainer.className = document.getElementById('themeSelector').value; document.getElementById('settingsMenu').classList.remove('show');
+        });
+    </script>
+</body>
+</html>
